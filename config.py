@@ -5,14 +5,20 @@ TRAFFIC_API_URL = "https://openapi.its.go.kr:9443/trafficInfo"
 TRAFFIC_API_KEY = "c0cfd6df07c34f1e818f1388d1132458"
 
 # Database Configuration
+# DB_CONFIG = {
+#     'host': '13.125.10.58',
+#     'database': 'postgres',
+#     'user': 'ciel',
+#     'password': 'cielinc!@#',
+#     'port': 5432
+# }
+
 DB_CONFIG = {
-    'host': '13.125.10.58',
+    'host': '127.0.0.1',
     'database': 'postgres',
-    'user': 'ciel',
-    'password': 'cielinc!@#',
+    'user': 'postgres',
     'port': 5432
 }
-
 # Add connection timeout and error handling
 DB_CONNECT_TIMEOUT = 10
 
