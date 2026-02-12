@@ -355,24 +355,18 @@ def _extract_route_roads(route_data):
     """Extract actual road names from route data"""
     road_names = set()
     
-    logger.info(f"Extracting route roads from: {list(route_data.keys()) if isinstance(route_data, dict) else type(route_data)}")
-    
     # Extract from route geometry if it has legs and steps
     if isinstance(route_data, dict):
         # Try direct legs access (OSRM format)
         legs = route_data.get('legs', [])
-        logger.info(f"Found {len(legs)} legs in route_data")
         if legs:
-            for i, leg in enumerate(legs):
+            for leg in legs:
                 if isinstance(leg, dict) and 'steps' in leg:
-                    steps = leg.get('steps', [])
-                    logger.info(f"Leg {i} has {len(steps)} steps")
-                    for step in steps:
+                    for step in leg['steps']:
                         if isinstance(step, dict):
                             step_name = step.get('name', '')
                             if step_name and step_name != 'unnamed' and step_name != '':
                                 road_names.add(step_name)
-                                logger.info(f"Added road name: {step_name}")
         
         # Also try nested route structure (result[0].routes[0].legs)
         if 'result' in route_data:
