@@ -169,7 +169,7 @@ class TrafficRouteMonitor:
             pass
         return timestamp_str
     
-    def _analyze_route_path_matching(self, matches):
+    def _analyze_route_path_matching(self, matches, route_info=None):
         """Analyze how well traffic data matches the actual route path"""
         print(f"\n🔍 Route Path Matching Analysis:")
         
@@ -183,8 +183,15 @@ class TrafficRouteMonitor:
         
         print(f"   📊 Traffic data covers {len(road_groups)} different roads in bounding box")
         
-        # Identify actual route roads from the route data
-        actual_route_roads = ['금낭화로', '양천로', '노들로', '양평로24길', '양평로22사길', '양평로22길', '선유로55길', '선유로53길']
+        # Extract actual route roads dynamically from route info
+        actual_route_roads = []
+        if route_info and 'legs' in route_info:
+            for leg in route_info['legs']:
+                if 'steps' in leg:
+                    for step in leg['steps']:
+                        step_name = step.get('name', '')
+                        if step_name and step_name != 'unnamed' and step_name not in actual_route_roads:
+                            actual_route_roads.append(step_name)
         
         # Find matches for actual route roads
         route_matches = {}
@@ -489,8 +496,12 @@ class TrafficRouteMonitor:
         route_road_traffic = {}
         other_traffic = []
         
-        # Define the actual route roads
-        actual_route_roads = ['금낭화로', '양천로', '노들로', '양평로24길', '양평로22사길', '양평로22길', '선유로55길', '선유로53길']
+        # Extract actual route roads dynamically from route steps
+        actual_route_roads = []
+        for step in route_steps:
+            step_name = step['name']
+            if step_name and step_name != 'unnamed' and step_name not in actual_route_roads:
+                actual_route_roads.append(step_name)
         
         for match in traffic_matches:
             road_name = match['road_name']
@@ -640,8 +651,19 @@ class TrafficRouteMonitor:
         print(f"\n📄 TRAFFIC-ADJUSTED ROUTE DATA (JSON):")
         print(f"{'='*60}")
         
+        # Generate route name from waypoints or use generic name
+        route_name_parts = []
+        if 'legs' in route_info and route_info['legs']:
+            first_leg = route_info['legs'][0]
+            if 'steps' in first_leg and first_leg['steps']:
+                first_road = first_leg['steps'][0].get('name', 'unknown')
+                if first_road and first_road != 'unnamed':
+                    route_name_parts.append(first_road)
+        
+        route_name = f"{route_name_parts[0]}_route_traffic_adjusted" if route_name_parts else "route_traffic_adjusted"
+        
         traffic_adjusted_route = {
-            "route_name": "금낭화로_route_traffic_adjusted",
+            "route_name": route_name,
             "timestamp": datetime.now().isoformat(),
             "original_route": {
                 "distance_m": route_info['distance'],
@@ -708,29 +730,38 @@ class TrafficRouteMonitor:
         print(f"\n📋 TRAFFIC-ADJUSTED ROUTE (Original Format):")
         print(f"{'='*60}")
         
+        # Extract waypoint info from route
+        waypoint_start = {"waypointType": "break", "name": "Start", "location": {"longitude": 0.0, "latitude": 0.0}}
+        waypoint_end = {"waypointType": "last", "name": "End", "location": {"longitude": 0.0, "latitude": 0.0}}
+        
+        if 'legs' in route_info and route_info['legs']:
+            first_leg = route_info['legs'][0]
+            if 'steps' in first_leg and first_leg['steps']:
+                first_step = first_leg['steps'][0]
+                last_step = first_leg['steps'][-1]
+                
+                if 'maneuver' in first_step and 'location' in first_step['maneuver']:
+                    start_loc = first_step['maneuver']['location']
+                    waypoint_start = {
+                        "waypointType": "break",
+                        "name": first_step.get('name', 'Start'),
+                        "location": {"longitude": start_loc.get('longitude', 0.0), "latitude": start_loc.get('latitude', 0.0)}
+                    }
+                
+                if 'maneuver' in last_step and 'location' in last_step['maneuver']:
+                    end_loc = last_step['maneuver']['location']
+                    waypoint_end = {
+                        "waypointType": "last",
+                        "name": last_step.get('name', 'End'),
+                        "location": {"longitude": end_loc.get('longitude', 0.0), "latitude": end_loc.get('latitude', 0.0)}
+                    }
+        
         # Create the traffic-adjusted route structure following the original format
         traffic_adjusted_route = {
             "resultCode": "Ok",
             "result": [
                 {
-                    "waypoints": [
-                        {
-                            "waypointType": "break",
-                            "name": "금낭화로",
-                            "location": {
-                                "longitude": 126.812902,
-                                "latitude": 37.577833
-                            }
-                        },
-                        {
-                            "waypointType": "last", 
-                            "name": "선유로53길",
-                            "location": {
-                                "longitude": 126.895589,
-                                "latitude": 37.538431
-                            }
-                        }
-                    ],
+                    "waypoints": [waypoint_start, waypoint_end],
                     "routes": [
                         {
                             "weight_name": "",
@@ -921,7 +952,7 @@ class TrafficRouteMonitor:
                         print(f"     {i+1}. {link['road_name']} - {link['current_speed']:.0f} km/h (Link: {link['link_id']})")
                     
                     # Show route path analysis
-                    self._analyze_route_path_matching(geographic_matches)
+                    self._analyze_route_path_matching(geographic_matches, route_info)
                     
                     # Show route geometry analysis
                     self._analyze_route_geometry_coverage(route_info, geographic_matches)
@@ -1100,7 +1131,8 @@ if __name__ == "__main__":
         # Run as standalone script (original behavior)
         monitor = TrafficRouteMonitor()
         
-        # Your specific route data
+        # Example route data (금낭화로 → 선유로53길 example)
+        # You can replace this with your own route coordinates
         route_data = {
             "resultCode": "Ok",
             "result": [
@@ -1108,7 +1140,7 @@ if __name__ == "__main__":
                     "waypoints": [
                         {
                             "waypointType": "break",
-                            "name": "금낭화로",
+                            "name": "Start",
                             "location": {
                                 "longitude": 126.812902,
                                 "latitude": 37.577833
@@ -1116,7 +1148,7 @@ if __name__ == "__main__":
                         },
                         {
                             "waypointType": "last",
-                            "name": "선유로53길",
+                            "name": "End",
                             "location": {
                                 "longitude": 126.895589,
                                 "latitude": 37.538431
@@ -1132,7 +1164,7 @@ if __name__ == "__main__":
                                     "summary": "양천로, 노들로",
                                     "steps": [
                                         {
-                                            "name": "금낭화로",
+                                            "name": "Road 1",
                                             "mode": "driving",
                                             "maneuver": {
                                                 "type": "depart",
@@ -1169,7 +1201,7 @@ if __name__ == "__main__":
                                             "distance": 511.0
                                         },
                                         {
-                                            "name": "양천로",
+                                            "name": "Road 2",
                                             "mode": "driving",
                                             "maneuver": {
                                                 "type": "turn",
@@ -1205,7 +1237,7 @@ if __name__ == "__main__":
                                             "distance": 192.0
                                         },
                                         {
-                                            "name": "노들로",
+                                            "name": "Road 3",
                                             "mode": "driving",
                                             "maneuver": {
                                                 "type": "new name",
@@ -1223,7 +1255,7 @@ if __name__ == "__main__":
                                             "distance": 1534.5
                                         },
                                         {
-                                            "name": "양평로24길",
+                                            "name": "Road 4",
                                             "mode": "driving",
                                             "maneuver": {
                                                 "type": "turn",
@@ -1346,7 +1378,7 @@ if __name__ == "__main__":
         }
         
         # Check traffic for your specific route
-        result = monitor.check_route_traffic(route_data, "금낭화로_route")
+        result = monitor.check_route_traffic(route_data, "example_route")
         
         if result:
             print(f"\n✅ Traffic check completed successfully!")
@@ -1355,7 +1387,7 @@ if __name__ == "__main__":
             print(f"\n❌ Traffic check failed")
         
         # Optionally, you can also add it to continuous monitoring
-        # start_coords = [37.577833, 126.812902]  # lat, lng
-        # end_coords = [37.577824, 126.812899]
-        # monitor.add_route("금낭화로_continuous", start_coords, end_coords)
+        # start_coords = [37.577833, 126.812902]  # lat, lng (example: 금낭화로)
+        # end_coords = [37.538431, 126.895589]    # lat, lng (example: 선유로53길)
+        # monitor.add_route("my_route", start_coords, end_coords)
         # monitor.start_monitoring()
