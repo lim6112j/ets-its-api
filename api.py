@@ -215,8 +215,37 @@ def analyze_route_simple():
                 "status": "error"
             }), 400
         
+        # Convert OSRM response to the expected route_data format
+        route_data = {
+            "resultCode": "Ok",
+            "result": [
+                {
+                    "waypoints": [
+                        {
+                            "waypointType": "break",
+                            "name": waypoints[0].get('name', 'Start'),
+                            "location": {
+                                "longitude": waypoints[0]['longitude'],
+                                "latitude": waypoints[0]['latitude']
+                            }
+                        },
+                        {
+                            "waypointType": "last",
+                            "name": waypoints[-1].get('name', 'End'),
+                            "location": {
+                                "longitude": waypoints[-1]['longitude'],
+                                "latitude": waypoints[-1]['latitude']
+                            }
+                        }
+                    ],
+                    "routes": osrm_route.get('routes', []),
+                    "code": osrm_route.get('code', 'Ok')
+                }
+            ]
+        }
+        
         # Analyze with traffic
-        result = monitor.check_route_traffic(osrm_route, route_name)
+        result = monitor.check_route_traffic(route_data, route_name)
         
         if result:
             # Return simplified response
