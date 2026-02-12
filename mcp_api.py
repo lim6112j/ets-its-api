@@ -10,10 +10,12 @@ import logging
 from typing import Any
 from main import TrafficRouteMonitor
 
-# Setup logging
+# Setup logging - must use stderr for MCP protocol (stdout is for JSON responses)
+import sys as _sys
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    stream=_sys.stderr  # MCP protocol requires stdout for JSON only
 )
 logger = logging.getLogger(__name__)
 

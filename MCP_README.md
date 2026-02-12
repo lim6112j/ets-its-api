@@ -223,3 +223,68 @@ All tools return a `status` field:
 - Running OSRM server
 - Access to ITS traffic API
 - Dependencies: see `requirements.txt` or `pyproject.toml`
+
+## Troubleshooting
+
+### "Unknown method" Error
+
+❌ **Incorrect:**
+```json
+{"method": "tools/get_route_comparison", "params": {...}}
+```
+
+✅ **Correct:**
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "get_route_comparison",
+    "arguments": {...}
+  }
+}
+```
+
+**Remember:** MCP protocol has only two methods:
+- `tools/list` - to list available tools
+- `tools/call` - to execute a tool (specify tool name in `params.name`)
+
+### Quick Test Commands
+
+**List tools:**
+```bash
+echo '{"method":"tools/list","params":{}}' | uv run python mcp_api.py 2>/dev/null
+```
+
+**Call get_route_comparison:**
+```bash
+echo '{
+  "method": "tools/call",
+  "params": {
+    "name": "get_route_comparison",
+    "arguments": {
+      "start_lat": 37.5546,
+      "start_lng": 126.9700,
+      "end_lat": 37.4691,
+      "end_lng": 126.4505,
+      "start_name": "서울역",
+      "end_name": "인천공항"
+    }
+  }
+}' | uv run python mcp_api.py 2>/dev/null | jq -r '.content[0].text' | jq '.'
+```
+
+**Call analyze_route:**
+```bash
+echo '{
+  "method": "tools/call",
+  "params": {
+    "name": "analyze_route",
+    "arguments": {
+      "waypoints": [
+        {"latitude": 37.5, "longitude": 127.0, "name": "Start"},
+        {"latitude": 37.6, "longitude": 126.9, "name": "End"}
+      ]
+    }
+  }
+}' | uv run python mcp_api.py 2>/dev/null | jq -r '.content[0].text' | jq '.'
+```
