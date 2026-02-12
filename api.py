@@ -268,9 +268,13 @@ def analyze_route_simple():
             }), 500
             
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
         logger.error(f"Error in analyze_route_simple: {str(e)}")
+        logger.error(f"Traceback: {error_trace}")
         return jsonify({
             "error": f"Internal server error: {str(e)}",
+            "error_type": type(e).__name__,
             "status": "error"
         }), 500
 
@@ -372,17 +376,20 @@ def _extract_route_roads(route_data):
         if 'result' in route_data:
             results = route_data.get('result', [])
             if isinstance(results, list) and len(results) > 0:
-                routes = results[0].get('routes', [])
-                if isinstance(routes, list) and len(routes) > 0:
-                    route = routes[0]
-                    legs = route.get('legs', [])
-                    for leg in legs:
-                        if isinstance(leg, dict) and 'steps' in leg:
-                            for step in leg['steps']:
-                                if isinstance(step, dict):
-                                    step_name = step.get('name', '')
-                                    if step_name and step_name != 'unnamed' and step_name != '':
-                                        road_names.add(step_name)
+                result_item = results[0]
+                if isinstance(result_item, dict):
+                    routes = result_item.get('routes', [])
+                    if isinstance(routes, list) and len(routes) > 0:
+                        route = routes[0]
+                        if isinstance(route, dict):
+                            legs = route.get('legs', [])
+                            for leg in legs:
+                                if isinstance(leg, dict) and 'steps' in leg:
+                                    for step in leg['steps']:
+                                        if isinstance(step, dict):
+                                            step_name = step.get('name', '')
+                                            if step_name and step_name != 'unnamed' and step_name != '':
+                                                road_names.add(step_name)
     
     return list(road_names)
 
@@ -402,6 +409,9 @@ def _extract_traffic_adjusted_route(result):
     if matched_traffic:
         # Filter for traffic data that's actually relevant to the route
         for match in matched_traffic:
+            if not isinstance(match, dict):
+                logger.warning(f"Skipping non-dict match: {type(match)}")
+                continue
             road_name = match.get('road_name', '').lower()
             # Check if the traffic data road name contains any of the actual route road names
             if route_roads:
@@ -456,6 +466,8 @@ def _generate_traffic_adjusted_route_original_format(result):
         return None
     
     route_data = result['route_data']
+    logger.info(f"route_data type: {type(route_data)}")
+    logger.info(f"route_data keys: {route_data.keys() if isinstance(route_data, dict) else 'not a dict'}")
     matched_traffic = result.get('matched_traffic', [])
     
     # Extract actual route roads dynamically
@@ -465,6 +477,9 @@ def _generate_traffic_adjusted_route_original_format(result):
     route_specific_traffic = []
     if matched_traffic:
         for match in matched_traffic:
+            if not isinstance(match, dict):
+                logger.warning(f"Skipping non-dict match in original format: {type(match)}")
+                continue
             road_name = match.get('road_name', '').lower()
             if route_roads:
                 if any(route_road.lower() in road_name or road_name in route_road.lower() for route_road in route_roads):
@@ -521,7 +536,7 @@ def _generate_traffic_adjusted_route_original_format(result):
                                 "distance": route_data['distance']
                             }
                         ],
-                        "geometry": route_data.get('geometry', ''),
+                        "geometry": route_data.get('geometry', '') if isinstance(route_data, dict) else '',
                         "duration": traffic_duration,
                         "distance": route_data['distance']
                     }
