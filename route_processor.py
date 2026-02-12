@@ -14,7 +14,8 @@ class RouteProcessor:
         params = {
             'overview': 'full',
             'geometries': 'geojson',
-            'annotations': 'true'
+            'annotations': 'true',
+            'steps': 'true'  # Include step-by-step instructions with road names
         }
         
         try:

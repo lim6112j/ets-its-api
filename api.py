@@ -351,6 +351,47 @@ def _convert_waypoints_to_route_data(waypoints):
         ]
     }
 
+def _extract_route_roads(route_data):
+    """Extract actual road names from route data"""
+    road_names = set()
+    
+    logger.info(f"Extracting route roads from: {list(route_data.keys()) if isinstance(route_data, dict) else type(route_data)}")
+    
+    # Extract from route geometry if it has legs and steps
+    if isinstance(route_data, dict):
+        # Try direct legs access (OSRM format)
+        legs = route_data.get('legs', [])
+        logger.info(f"Found {len(legs)} legs in route_data")
+        if legs:
+            for i, leg in enumerate(legs):
+                if isinstance(leg, dict) and 'steps' in leg:
+                    steps = leg.get('steps', [])
+                    logger.info(f"Leg {i} has {len(steps)} steps")
+                    for step in steps:
+                        if isinstance(step, dict):
+                            step_name = step.get('name', '')
+                            if step_name and step_name != 'unnamed' and step_name != '':
+                                road_names.add(step_name)
+                                logger.info(f"Added road name: {step_name}")
+        
+        # Also try nested route structure (result[0].routes[0].legs)
+        if 'result' in route_data:
+            results = route_data.get('result', [])
+            if isinstance(results, list) and len(results) > 0:
+                routes = results[0].get('routes', [])
+                if isinstance(routes, list) and len(routes) > 0:
+                    route = routes[0]
+                    legs = route.get('legs', [])
+                    for leg in legs:
+                        if isinstance(leg, dict) and 'steps' in leg:
+                            for step in leg['steps']:
+                                if isinstance(step, dict):
+                                    step_name = step.get('name', '')
+                                    if step_name and step_name != 'unnamed' and step_name != '':
+                                        road_names.add(step_name)
+    
+    return list(road_names)
+
 def _extract_traffic_adjusted_route(result):
     """Extract traffic-adjusted route information from analysis result"""
     if not result:
@@ -359,16 +400,21 @@ def _extract_traffic_adjusted_route(result):
     route_data = result['route_data']
     matched_traffic = result.get('matched_traffic', [])
     
+    # Extract actual route roads dynamically
+    route_roads = _extract_route_roads(route_data)
+    
     # Check if we have meaningful traffic data that actually matches the route
     route_specific_traffic = []
     if matched_traffic:
         # Filter for traffic data that's actually relevant to the route
-        # This is a simplified check - in a real system you'd want more sophisticated matching
         for match in matched_traffic:
             road_name = match.get('road_name', '').lower()
             # Check if the traffic data road name contains any of the actual route road names
-            route_roads = ['금낭화로', '양천로', '노들로', '양평로', '선유로']
-            if any(route_road.lower() in road_name or road_name in route_road.lower() for route_road in route_roads):
+            if route_roads:
+                if any(route_road.lower() in road_name or road_name in route_road.lower() for route_road in route_roads):
+                    route_specific_traffic.append(match)
+            else:
+                # If no route roads extracted, use all traffic data (fallback)
                 route_specific_traffic.append(match)
     
     if not route_specific_traffic:
@@ -418,9 +464,24 @@ def _generate_traffic_adjusted_route_original_format(result):
     route_data = result['route_data']
     matched_traffic = result.get('matched_traffic', [])
     
-    # Calculate traffic-adjusted duration
+    # Extract actual route roads dynamically
+    route_roads = _extract_route_roads(route_data)
+    
+    # Filter traffic to only include route-specific roads
+    route_specific_traffic = []
     if matched_traffic:
-        traffic_speeds = [match['current_speed'] for match in matched_traffic]
+        for match in matched_traffic:
+            road_name = match.get('road_name', '').lower()
+            if route_roads:
+                if any(route_road.lower() in road_name or road_name in route_road.lower() for route_road in route_roads):
+                    route_specific_traffic.append(match)
+            else:
+                # If no route roads extracted, use all traffic data (fallback)
+                route_specific_traffic.append(match)
+    
+    # Calculate traffic-adjusted duration using route-specific traffic only
+    if route_specific_traffic:
+        traffic_speeds = [match['current_speed'] for match in route_specific_traffic]
         avg_traffic_speed = sum(traffic_speeds) / len(traffic_speeds)
         route_distance_km = route_data['distance'] / 1000
         
@@ -482,8 +543,10 @@ def _generate_traffic_adjusted_route_original_format(result):
         "traffic_adjusted_duration": traffic_duration,
         "time_difference_seconds": traffic_duration - route_data['duration'],
         "time_difference_percent": ((traffic_duration - route_data['duration']) / route_data['duration'] * 100) if route_data['duration'] > 0 else 0,
-        "traffic_segments_used": len(matched_traffic),
-        "average_traffic_speed_kmh": sum([match['current_speed'] for match in matched_traffic]) / len(matched_traffic) if matched_traffic else 0,
+        "traffic_segments_used": len(route_specific_traffic),
+        "total_traffic_segments_in_area": len(matched_traffic),
+        "route_roads_detected": route_roads,
+        "average_traffic_speed_kmh": sum([match['current_speed'] for match in route_specific_traffic]) / len(route_specific_traffic) if route_specific_traffic else 0,
         "timestamp": datetime.now().isoformat()
     }
     
