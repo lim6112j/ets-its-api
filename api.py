@@ -359,6 +359,11 @@ def _extract_route_roads(route_data):
     """Extract actual road names from route data"""
     road_names = set()
     
+    # Safety check: ensure route_data is dict
+    if not isinstance(route_data, dict):
+        logger.warning(f"route_data is not a dict, it's {type(route_data)}. Cannot extract road names.")
+        return []
+    
     # Extract from route geometry if it has legs and steps
     if isinstance(route_data, dict):
         # Try direct legs access (OSRM format)

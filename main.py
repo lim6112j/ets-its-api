@@ -742,19 +742,35 @@ class TrafficRouteMonitor:
                 
                 if 'maneuver' in first_step and 'location' in first_step['maneuver']:
                     start_loc = first_step['maneuver']['location']
-                    waypoint_start = {
-                        "waypointType": "break",
-                        "name": first_step.get('name', 'Start'),
-                        "location": {"longitude": start_loc.get('longitude', 0.0), "latitude": start_loc.get('latitude', 0.0)}
-                    }
+                    # Handle both dict {longitude, latitude} and list [lng, lat] formats
+                    if isinstance(start_loc, list):
+                        waypoint_start = {
+                            "waypointType": "break",
+                            "name": first_step.get('name', 'Start'),
+                            "location": {"longitude": start_loc[0] if len(start_loc) > 0 else 0.0, "latitude": start_loc[1] if len(start_loc) > 1 else 0.0}
+                        }
+                    elif isinstance(start_loc, dict):
+                        waypoint_start = {
+                            "waypointType": "break",
+                            "name": first_step.get('name', 'Start'),
+                            "location": {"longitude": start_loc.get('longitude', 0.0), "latitude": start_loc.get('latitude', 0.0)}
+                        }
                 
                 if 'maneuver' in last_step and 'location' in last_step['maneuver']:
                     end_loc = last_step['maneuver']['location']
-                    waypoint_end = {
-                        "waypointType": "last",
-                        "name": last_step.get('name', 'End'),
-                        "location": {"longitude": end_loc.get('longitude', 0.0), "latitude": end_loc.get('latitude', 0.0)}
-                    }
+                    # Handle both dict {longitude, latitude} and list [lng, lat] formats
+                    if isinstance(end_loc, list):
+                        waypoint_end = {
+                            "waypointType": "last",
+                            "name": last_step.get('name', 'End'),
+                            "location": {"longitude": end_loc[0] if len(end_loc) > 0 else 0.0, "latitude": end_loc[1] if len(end_loc) > 1 else 0.0}
+                        }
+                    elif isinstance(end_loc, dict):
+                        waypoint_end = {
+                            "waypointType": "last",
+                            "name": last_step.get('name', 'End'),
+                            "location": {"longitude": end_loc.get('longitude', 0.0), "latitude": end_loc.get('latitude', 0.0)}
+                        }
         
         # Create the traffic-adjusted route structure following the original format
         traffic_adjusted_route = {
