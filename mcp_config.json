@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "traffic-analysis": {
+      "command": "uv",
+      "args": ["run", "python", "mcp_api.py"],
+      "cwd": "/Users/nixos/workspace/eta-its-api",
+      "env": {},
+      "disabled": false,
+      "alwaysAllow": []
+    }
+  }
+}
