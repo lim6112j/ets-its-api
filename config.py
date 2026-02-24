@@ -14,9 +14,10 @@ TRAFFIC_API_KEY = "c0cfd6df07c34f1e818f1388d1132458"
 # }
 
 DB_CONFIG = {
-    'host': '127.0.0.1',
+    'host': 'localhost',
     'database': 'postgres',
-    'user': 'postgres',
+    'user': 'ciel',
+    'password': 'cielinc!@#',
     'port': 5432
 }
 # Add connection timeout and error handling

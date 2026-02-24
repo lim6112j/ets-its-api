@@ -5,7 +5,8 @@
 
 set +e  # Don't exit on error
 
-REMOTE_HOST="13.125.10.58"
+#REMOTE_HOST="13.125.10.58"
+REMOTE_HOST="localhost"
 REMOTE_PORT="5432"
 REMOTE_USER="ciel"
 REMOTE_PASSWORD="cielinc!@#"
